@@ -1,3 +1,4 @@
+import os
 import logging
 
 import spotipy
@@ -19,6 +20,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
+sp = spotipy.Spotify(
+    auth_manager=SpotifyClientCredentials(
+        client_id=SPOTIFY_CLIENT_ID,
+        client_secret=SPOTIFY_CLIENT_SECRET
+    )
+)
+
 
 def extract_track_info(track: dict) -> dict:
     return {
@@ -37,13 +47,6 @@ def extract_track_info(track: dict) -> dict:
 @app.get("/search/sp/{query}", status_code=200, response_model=list[dict])
 def search_sp(query: str):
     logger.info(f'Handling Spotify request for {query=}')
-    sp = spotipy.Spotify(
-        auth_manager=SpotifyClientCredentials(
-            client_id='a87303d13933408a91e5996bc071209b',
-            client_secret='4136795c7e2a45e6a58df44363ced06b'
-        )
-    )
-
     results = sp.search(q=query, limit=1)['tracks']['items']
     return list(map(extract_track_info, results))
 
@@ -71,7 +74,6 @@ def search_yt(title: str, artist: str = None):
         'official': official_video['link'],
         'lyrics': lyrics_video['link'],
         'title': official_video['title'],
-
     }
 
 
