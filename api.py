@@ -1,14 +1,17 @@
 import os
 import logging
+import time
+import uuid
 from typing import List, Dict
 
 import spotipy
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from spotipy.oauth2 import SpotifyClientCredentials
 from youtubesearchpython import CustomSearch, VideoSortOrder
 from pydantic import BaseModel
+from sse_starlette.sse import EventSourceResponse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -67,17 +70,36 @@ def download_track(request: DownloadRequest):
     logger.info(f"Searching for {yt_query=}")
 
     # Download song from YouTube
-    lyrics_video_link: str = list(
-        CustomSearch(f"{yt_query} lyrics", VideoSortOrder.relevance, limit=1).result()[
-            "result"
-        ]
-    )[0]["link"]
-    logger.info(f"Downloading video {lyrics_video_link=}")
-    # TODO: Start youtube-dl download here
+    search_results = CustomSearch(
+        f"{yt_query} lyrics", VideoSortOrder.relevance, limit=1
+    ).result()["result"]
+    lyrics_video_link: str = list(search_results)[0]["link"]
+    lyrics_video_title: str = list(search_results)[0]["title"]
+    logger.info(f"Downloading {lyrics_video_title=}, {lyrics_video_link=}")
 
-    # TODO: Rename file as needed, apply metadata
+    return {
+        "job_id": uuid.uuid4(),
+        "link": lyrics_video_link,
+        "title": lyrics_video_title,
+    }
 
-    return f"Downloaded video {lyrics_video_link=}"
+
+async def logGenerator(request: Request):
+    for line in range(10):
+        if await request.is_disconnected():
+            logger.info("Client disconnected early.")
+            break
+        yield line
+        time.sleep(0.5)
+    yield "Done."
+    logger.info("Disconnecting client.")
+    await request.close()
+
+
+@app.get("/progress/{id}")
+async def progress(request: Request, id: str):
+    event_generator = logGenerator(request)
+    return EventSourceResponse(event_generator)
 
 
 @app.get("/search/yt/{title}", status_code=200)

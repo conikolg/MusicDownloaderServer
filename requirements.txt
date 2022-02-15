@@ -2,3 +2,4 @@ youtube-search-python
 spotipy
 fastapi
 uvicorn[standard]
+sse-starlette
