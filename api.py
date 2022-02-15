@@ -85,13 +85,13 @@ def download_track(request: DownloadRequest):
 
 
 async def logGenerator(request: Request):
-    for line in range(10):
+    for line in range(0, 100, 12):
         if await request.is_disconnected():
             logger.info("Client disconnected early.")
             break
         yield line
         time.sleep(0.5)
-    yield "Done."
+    yield "100"
     logger.info("Disconnecting client.")
     await request.close()
 
